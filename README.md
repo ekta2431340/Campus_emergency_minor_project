@@ -25,7 +25,7 @@ These credentials are public demo credentials, not secure accounts.
 
 ## Deploy to GitHub Pages
 
-Push to `main` or run **Deploy to GitHub Pages** in the Actions tab. The workflow installs the locked dependencies, type-checks and builds the project, then publishes `dist`. In repository **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**.
+Push to `main` or run **Deploy to GitHub Pages** in the Actions tab. The workflow installs the locked dependencies, type-checks and builds the project, then publishes the built files to the `gh-pages` branch. In repository **Settings → Pages**, set **Build and deployment → Source** to **Deploy from a branch**, then select `gh-pages` and `/(root)`.
 
 The workflow uses demo mode if both Supabase secrets are absent. If you provide one Supabase secret, you must provide both:
 
