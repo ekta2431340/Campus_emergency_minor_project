@@ -1,0 +1,6 @@
+{
+  "name": "Campus Emergency System",
+  "description": "Professional Campus Emergency System for higher education institutions featuring student emergency reporting, keyword-based priority classification, and administrator dispatch management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
