@@ -9,6 +9,22 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { VivaCodeViewerModal } from './components/VivaCodeViewerModal';
 import { Footer } from './components/Footer';
 import { supabase } from './lib/supabase';
+import { DEMO_REPORTS, DEMO_USERS } from './data/demoData';
+
+const STORAGE_KEY_REPORTS = 'campus_emergency_system_reports';
+const STORAGE_KEY_USER = 'campus_emergency_system_active_user';
+const DEMO_STUDENT_PASSWORD = 'bca2026';
+const DEMO_ADMIN_PASSWORD = 'admin123';
+
+function readDemoStorage<T>(key: string, fallback: T): T {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) as T : fallback;
+  } catch (error) {
+    console.error(`Could not read demo data from local storage (${key}).`, error);
+    return fallback;
+  }
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString([], {
@@ -76,11 +92,39 @@ async function loadReports(client: SupabaseClient<Database>): Promise<EmergencyR
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [reports, setReports] = useState<EmergencyReport[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(() =>
+    supabase ? null : readDemoStorage<User | null>(STORAGE_KEY_USER, null)
+  );
+  const [reports, setReports] = useState<EmergencyReport[]>(() =>
+    supabase ? [] : readDemoStorage(STORAGE_KEY_REPORTS, DEMO_REPORTS)
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isVivaModalOpen, setIsVivaModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (supabase) return;
+
+    try {
+      localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(reports));
+    } catch (error) {
+      console.error('Could not save demo reports to local storage.', error);
+    }
+  }, [reports]);
+
+  useEffect(() => {
+    if (supabase) return;
+
+    try {
+      if (currentUser) {
+        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem(STORAGE_KEY_USER);
+      }
+    } catch (error) {
+      console.error('Could not save demo user session to local storage.', error);
+    }
+  }, [currentUser]);
 
   const refreshReports = useCallback(async () => {
     if (!supabase) return;
@@ -166,7 +210,18 @@ export default function App() {
   }, [currentUser, refreshReports]);
 
   const handleLogin = async (email: string, password: string, role: User['role']) => {
-    if (!supabase) throw new Error('Supabase is not configured. Follow the deployment setup in README.md.');
+    if (!supabase) {
+      const user = DEMO_USERS.find(
+        (candidate) => candidate.role === role && candidate.email?.toLowerCase() === email.toLowerCase()
+      );
+      const expectedPassword = role === 'admin' ? DEMO_ADMIN_PASSWORD : DEMO_STUDENT_PASSWORD;
+      if (!user || password !== expectedPassword) {
+        throw new Error('Invalid demo email or password. See README.md for demo account credentials.');
+      }
+      setCurrentUser(user);
+      setErrorMessage(null);
+      return;
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
@@ -205,7 +260,9 @@ export default function App() {
     password: string,
     details: SignUpDetails
   ): Promise<boolean> => {
-    if (!supabase) throw new Error('Supabase is not configured. Follow the deployment setup in README.md.');
+    if (!supabase) {
+      throw new Error('Account registration needs a backend. Use one of the demo accounts listed in README.md.');
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -242,7 +299,10 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      setCurrentUser(null);
+      return;
+    }
     const { error } = await supabase.auth.signOut();
     if (error) {
       setErrorMessage(`Could not sign out: ${error.message}`);
@@ -253,7 +313,11 @@ export default function App() {
   };
 
   const handleAddReport = async (report: EmergencyReport) => {
-    if (!supabase || !currentUser) throw new Error('Your session has expired. Sign in again.');
+    if (!currentUser) throw new Error('Your session has expired. Sign in again.');
+    if (!supabase) {
+      setReports((previous) => [report, ...previous]);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('emergency_reports')
@@ -283,7 +347,23 @@ export default function App() {
     status: ReportStatus,
     adminNotes: string
   ) => {
-    if (!supabase) throw new Error('Supabase is not configured.');
+    if (!supabase) {
+      setReports((previous) => previous.map((report) => report.id === id
+        ? {
+            ...report,
+            status,
+            adminNotes,
+            updatedAt: new Date().toLocaleString([], {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          }
+        : report));
+      return;
+    }
 
     const { data, error } = await supabase
       .from('emergency_reports')
@@ -313,15 +393,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {!supabase ? (
-          <div className="max-w-2xl w-full mx-auto p-6 my-12 bg-red-950/50 border border-red-700 rounded-2xl text-red-100">
-            <h1 className="font-bold text-lg">Supabase setup required</h1>
-            <p className="mt-2 text-sm">
-              Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to your local
-              environment or GitHub Actions secrets. Follow the deployment steps in README.md.
-            </p>
-          </div>
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="flex-1 grid place-items-center text-slate-300">Connecting to Campus Emergency System…</div>
         ) : !currentUser ? (
           <LoginPage onLogin={handleLogin} onSignUp={handleSignUp} />

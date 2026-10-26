@@ -34,8 +34,10 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::error::Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in GitHub Actions secrets."
+          if [ -z "$VITE_SUPABASE_URL" ] && [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "Supabase secrets are not configured; building the browser-only demo."
+          elif [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::Set both VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, or remove both to deploy demo mode."
             exit 1
           fi
           npm run build
