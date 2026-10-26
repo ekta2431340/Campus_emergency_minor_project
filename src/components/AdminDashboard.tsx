@@ -17,7 +17,7 @@ import {
 interface AdminDashboardProps {
   adminUser: User;
   reports: EmergencyReport[];
-  onUpdateStatus: (id: string, newStatus: ReportStatus, adminNotes: string) => void;
+  onUpdateStatus: (id: string, newStatus: ReportStatus, adminNotes: string) => Promise<void>;
 }
 
 export function AdminDashboard({
@@ -34,6 +34,8 @@ export function AdminDashboard({
   const [selectedReport, setSelectedReport] = useState<EmergencyReport | null>(null);
   const [newStatus, setNewStatus] = useState<ReportStatus>('In Progress');
   const [adminNotes, setAdminNotes] = useState<string>('');
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Metrics
   const totalReports = reports.length;
@@ -63,11 +65,19 @@ export function AdminDashboard({
     setAdminNotes(report.adminNotes || '');
   };
 
-  const handleSaveStatus = (e: React.FormEvent) => {
+  const handleSaveStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReport) return;
-    onUpdateStatus(selectedReport.id, newStatus, adminNotes.trim());
-    setSelectedReport(null);
+    setIsUpdating(true);
+    setUpdateError(null);
+    try {
+      await onUpdateStatus(selectedReport.id, newStatus, adminNotes.trim());
+      setSelectedReport(null);
+    } catch (error) {
+      setUpdateError(error instanceof Error ? error.message : 'Could not update the report.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -377,7 +387,12 @@ export function AdminDashboard({
             </div>
 
             {/* Modal Content */}
-            <form onSubmit={handleSaveStatus} className="p-6 space-y-4 text-xs">
+            <form onSubmit={(event) => { void handleSaveStatus(event); }} className="p-6 space-y-4 text-xs">
+              {updateError && (
+                <div role="alert" className="rounded-lg border border-red-700 bg-red-950/60 p-3 text-red-200">
+                  {updateError}
+                </div>
+              )}
               <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
@@ -471,9 +486,10 @@ export function AdminDashboard({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md"
+                  disabled={isUpdating}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md disabled:opacity-60"
                 >
-                  Save Status & Notes
+                  {isUpdating ? 'Saving…' : 'Save Status & Notes'}
                 </button>
               </div>
             </form>

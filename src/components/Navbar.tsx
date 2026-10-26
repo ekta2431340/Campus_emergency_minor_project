@@ -38,7 +38,7 @@ export function Navbar({ currentUser, onLogout, onOpenVivaModal }: NavbarProps) 
             <button
               onClick={onOpenVivaModal}
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-              title="View Python keyword classifier and SQLite schema"
+              title="View Python keyword classifier and Supabase database migration"
             >
               <Code className="w-3.5 h-3.5 text-blue-400" />
               <span>Python Classifier Viva Logic</span>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Code, Database, Check, Play } from 'lucide-react';
 import { classifyEmergency } from '../utils/classifier';
+import databaseMigration from '../../supabase/migrations/20261027000000_initial_schema.sql?raw';
 
 export function VivaCodeViewerModal({
   isOpen,
@@ -9,7 +10,7 @@ export function VivaCodeViewerModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'python' | 'sqlite' | 'tester'>('python');
+  const [activeTab, setActiveTab] = useState<'python' | 'database' | 'tester'>('python');
   const [testCategory, setTestCategory] = useState<'Medical Emergency' | 'Fire' | 'Security Issue' | 'Accident' | 'Other'>('Medical Emergency');
   const [testDesc, setTestDesc] = useState<string>('Student is unconscious and fainted near the staircase.');
   const [testResult, setTestResult] = useState(() => classifyEmergency(testCategory, testDesc));
@@ -59,37 +60,6 @@ def classify_emergency(category: str, description: str) -> dict:
         
     return {"priority": priority, "matched_keywords": matched_high + matched_medium, "reason": reason}`;
 
-  const sqliteSchema = `-- Campus Emergency System - SQLite Database Schema
--- File: database_setup.py (campus_emergency.db)
-
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    full_name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('student', 'admin')),
-    roll_no TEXT,
-    department TEXT,
-    phone TEXT,
-    email TEXT
-);
-
-CREATE TABLE emergency_reports (
-    id TEXT PRIMARY KEY,
-    student_username TEXT NOT NULL,
-    student_name TEXT NOT NULL,
-    roll_no TEXT,
-    category TEXT NOT NULL CHECK(category IN ('Medical Emergency', 'Fire', 'Security Issue', 'Accident', 'Other')),
-    location TEXT NOT NULL,
-    description TEXT NOT NULL,
-    priority TEXT NOT NULL CHECK(priority IN ('High', 'Medium', 'Low')),
-    status TEXT NOT NULL DEFAULT 'Submitted' CHECK(status IN ('Submitted', 'In Progress', 'Resolved')),
-    classification_reason TEXT,
-    admin_notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_username) REFERENCES users(username)
-);`;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col">
@@ -104,7 +74,7 @@ CREATE TABLE emergency_reports (
                 BCA Project Viva Reference & Architecture
               </h3>
               <p className="text-xs text-slate-400">
-                Campus Emergency System · Python Keyword Logic & SQLite Database
+                Campus Emergency System · Python Keyword Logic &amp; Supabase PostgreSQL
               </p>
             </div>
           </div>
@@ -131,14 +101,14 @@ CREATE TABLE emergency_reports (
           </button>
 
           <button
-            onClick={() => setActiveTab('sqlite')}
+            onClick={() => setActiveTab('database')}
             className={`px-4 py-2 border-b-2 transition-colors ${
-              activeTab === 'sqlite'
+              activeTab === 'database'
                 ? 'border-blue-500 text-white'
                 : 'border-transparent text-slate-400 hover:text-white'
             }`}
           >
-            SQLite Schema (database_setup.py)
+            Supabase PostgreSQL Migration
           </button>
 
           <button
@@ -167,14 +137,14 @@ CREATE TABLE emergency_reports (
             </div>
           )}
 
-          {activeTab === 'sqlite' && (
+          {activeTab === 'database' && (
             <div className="space-y-3">
               <div className="p-3 bg-blue-950/40 border border-blue-800/60 rounded-xl text-blue-200">
                 <strong className="text-white block mb-1">Database Architecture:</strong>
-                Relational schema in SQLite3 with normalized tables for <code>users</code> and <code>emergency_reports</code>, with foreign key integrity, check constraints, and timestamps.
+                This is the active Supabase PostgreSQL migration. It creates student profiles, emergency reports, authentication policies, and the admin-only status update rules.
               </div>
               <pre className="p-4 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-cyan-300 overflow-x-auto leading-relaxed">
-                {sqliteSchema}
+                {databaseMigration}
               </pre>
             </div>
           )}

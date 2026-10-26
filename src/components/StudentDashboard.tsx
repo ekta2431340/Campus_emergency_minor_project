@@ -1,6 +1,6 @@
 import { useState, useId } from 'react';
 import { User, EmergencyReport, EmergencyCategory, ReportPriority } from '../types/emergency';
-import { CAMPUS_LOCATIONS } from '../data/defaultData';
+import { CAMPUS_LOCATIONS } from '../data/campusLocations';
 import { classifyEmergency } from '../utils/classifier';
 import {
   AlertTriangle,
@@ -24,7 +24,7 @@ import {
 interface StudentDashboardProps {
   user: User;
   reports: EmergencyReport[];
-  onSubmitReport: (newReport: EmergencyReport) => void;
+  onSubmitReport: (newReport: EmergencyReport) => Promise<void>;
 }
 
 export function StudentDashboard({ user, reports, onSubmitReport }: StudentDashboardProps) {
@@ -35,6 +35,8 @@ export function StudentDashboard({ user, reports, onSubmitReport }: StudentDashb
   const [description, setDescription] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Submitted' | 'In Progress' | 'Resolved'>('All');
   const [submissionSuccessMsg, setSubmissionSuccessMsg] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Live Python-logic keyword classification calculation
   const classification = classifyEmergency(category, description);
@@ -54,16 +56,16 @@ export function StudentDashboard({ user, reports, onSubmitReport }: StudentDashb
     'Other': <HelpCircle className="w-4 h-4 text-slate-400" />
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!description.trim()) {
-      alert('Please enter a brief description of the emergency.');
+      setSubmissionError('Please enter a brief description of the emergency.');
       return;
     }
 
     const finalLocation = customLocation.trim() || location;
-    const reportId = `CES-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const reportId = `CES-${new Date().getFullYear()}-${crypto.randomUUID()}`;
 
     const newReport: EmergencyReport = {
       id: reportId,
@@ -86,14 +88,22 @@ export function StudentDashboard({ user, reports, onSubmitReport }: StudentDashb
       })
     };
 
-    onSubmitReport(newReport);
-    setIsModalOpen(false);
-    setDescription('');
-    setCustomLocation('');
-    setSubmissionSuccessMsg(
-      `Emergency Report #${reportId} submitted successfully to Campus Security Control!`
-    );
-    setTimeout(() => setSubmissionSuccessMsg(null), 6000);
+    setIsSubmitting(true);
+    setSubmissionError(null);
+    try {
+      await onSubmitReport(newReport);
+      setIsModalOpen(false);
+      setDescription('');
+      setCustomLocation('');
+      setSubmissionSuccessMsg(
+        `Emergency Report #${reportId} submitted successfully to Campus Security Control!`
+      );
+      setTimeout(() => setSubmissionSuccessMsg(null), 6000);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Could not submit the report.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -184,7 +194,12 @@ export function StudentDashboard({ user, reports, onSubmitReport }: StudentDashb
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 text-xs">
+            <form onSubmit={(event) => { void handleFormSubmit(event); }} className="p-6 space-y-4 text-xs">
+              {submissionError && (
+                <div role="alert" className="rounded-lg border border-red-700 bg-red-950/60 p-3 text-red-200">
+                  {submissionError}
+                </div>
+              )}
               {/* Emergency Category */}
               <div>
                 <label className="text-slate-300 font-semibold block mb-1.5">
@@ -312,10 +327,11 @@ export function StudentDashboard({ user, reports, onSubmitReport }: StudentDashb
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-60"
                 >
                   <AlertTriangle className="w-4 h-4" />
-                  <span>Submit Emergency Report</span>
+                  <span>{isSubmitting ? 'Submitting…' : 'Submit Emergency Report'}</span>
                 </button>
               </div>
             </form>

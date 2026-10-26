@@ -17,7 +17,7 @@ export function Footer() {
 
         <div className="text-center sm:text-right text-[11px] text-slate-500 space-y-0.5">
           <p>Department of Computer Applications · PSIT-College of Higher Education</p>
-          <p>Built with HTML5, CSS3, JavaScript, Python & SQLite</p>
+          <p>React, TypeScript, Supabase Auth &amp; PostgreSQL</p>
         </div>
       </div>
     </footer>
