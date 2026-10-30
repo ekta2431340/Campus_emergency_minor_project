@@ -23,7 +23,7 @@ export function VivaCodeViewerModal({
 
   const pythonScript = `"""
 Campus Emergency System - classify_emergency.py
-Language: Python 3 | BCA Final Year Project
+Language: Python 3 | Emergency Classification
 """
 
 HIGH_PRIORITY_KEYWORDS = [
@@ -71,7 +71,7 @@ def classify_emergency(category: str, description: str) -> dict:
             </div>
             <div>
               <h3 className="text-base font-bold text-white">
-                BCA Project Viva Reference & Architecture
+                Classification Logic &amp; System Architecture
               </h3>
               <p className="text-xs text-slate-400">
                 Campus Emergency System · Python Keyword Logic &amp; Supabase PostgreSQL
@@ -119,7 +119,7 @@ def classify_emergency(category: str, description: str) -> dict:
                 : 'border-transparent text-slate-400 hover:text-white'
             }`}
           >
-            Live Viva Tester
+            Live Classifier Test
           </button>
         </div>
 
@@ -128,7 +128,7 @@ def classify_emergency(category: str, description: str) -> dict:
           {activeTab === 'python' && (
             <div className="space-y-3">
               <div className="p-3 bg-blue-950/40 border border-blue-800/60 rounded-xl text-blue-200">
-                <strong className="text-white block mb-1">Examiner Explanation Note:</strong>
+                <strong className="text-white block mb-1">Technical Overview:</strong>
                 This simple Python algorithm checks for life-threatening keywords (e.g., <em>fire, unconscious, bleeding, explosion</em>) using standard sub-string searches in $O(N)$ time complexity. No complex or fragile AI is used, making it deterministic, transparent, and easy to justify in an examination.
               </div>
               <pre className="p-4 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-emerald-300 overflow-x-auto leading-relaxed">

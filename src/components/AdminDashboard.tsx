@@ -11,19 +11,31 @@ import {
   X,
   Edit,
   Eye,
-  FileCheck
+  FileCheck,
+  UserPlus
 } from 'lucide-react';
+
+interface AdminRegistrationDetails {
+  email: string;
+  password: string;
+  username: string;
+  fullName: string;
+  department: string;
+  phone: string;
+}
 
 interface AdminDashboardProps {
   adminUser: User;
   reports: EmergencyReport[];
   onUpdateStatus: (id: string, newStatus: ReportStatus, adminNotes: string) => Promise<void>;
+  onRegisterAdmin?: (details: AdminRegistrationDetails) => Promise<void>;
 }
 
 export function AdminDashboard({
   adminUser,
   reports,
-  onUpdateStatus
+  onUpdateStatus,
+  onRegisterAdmin
 }: AdminDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
@@ -36,6 +48,10 @@ export function AdminDashboard({
   const [adminNotes, setAdminNotes] = useState<string>('');
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isAdminRegistrationOpen, setIsAdminRegistrationOpen] = useState(false);
+  const [adminRegistrationError, setAdminRegistrationError] = useState<string | null>(null);
+  const [adminRegistrationSuccess, setAdminRegistrationSuccess] = useState(false);
+  const [isRegisteringAdmin, setIsRegisteringAdmin] = useState(false);
 
   // Metrics
   const totalReports = reports.length;
@@ -80,8 +96,40 @@ export function AdminDashboard({
     }
   };
 
+  const handleRegisterAdmin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!onRegisterAdmin) return;
+
+    const formData = new FormData(event.currentTarget);
+    setAdminRegistrationError(null);
+    setIsRegisteringAdmin(true);
+    try {
+      await onRegisterAdmin({
+        fullName: String(formData.get('fullName') ?? '').trim(),
+        username: String(formData.get('username') ?? '').trim().toLowerCase(),
+        email: String(formData.get('email') ?? '').trim(),
+        department: String(formData.get('department') ?? '').trim(),
+        phone: String(formData.get('phone') ?? '').trim(),
+        password: String(formData.get('password') ?? '')
+      });
+      setAdminRegistrationSuccess(true);
+      setIsAdminRegistrationOpen(false);
+    } catch (error) {
+      setAdminRegistrationError(
+        error instanceof Error ? error.message : 'Could not register the administrator.'
+      );
+    } finally {
+      setIsRegisteringAdmin(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {adminRegistrationSuccess && (
+        <div role="status" className="rounded-xl border border-emerald-700 bg-emerald-950/50 px-4 py-3 text-sm text-emerald-100">
+          Admin account created. The new administrator can now sign in.
+        </div>
+      )}
       {/* Admin Title & Security Notice */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -98,6 +146,18 @@ export function AdminDashboard({
             Logged in as: <strong className="text-white">{adminUser.fullName}</strong> ({adminUser.department || 'Proctor Office'})
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setAdminRegistrationError(null);
+            setAdminRegistrationSuccess(false);
+            setIsAdminRegistrationOpen(true);
+          }}
+          className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-red-500"
+        >
+          <UserPlus className="h-4 w-4" />
+          Register New Admin
+        </button>
       </div>
 
       {/* 4 Metric Cards */}
@@ -493,6 +553,114 @@ export function AdminDashboard({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isAdminRegistrationOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 text-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-6 py-4">
+              <div>
+                <h2 className="text-base font-bold">Register New Administrator</h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  {onRegisterAdmin
+                    ? 'Create an admin account for the security team.'
+                    : 'Admin creation depends on your configured backend.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAdminRegistrationOpen(false)}
+                aria-label="Close admin registration"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {onRegisterAdmin ? (
+            <form onSubmit={(event) => { void handleRegisterAdmin(event); }} className="space-y-4 p-6">
+              {adminRegistrationError && (
+                <div role="alert" className="rounded-lg border border-red-500/50 bg-red-950/60 p-3 text-xs text-red-200">
+                  {adminRegistrationError}
+                </div>
+              )}
+              <label className="block text-xs font-semibold text-slate-300">
+                Full name
+                <input name="fullName" autoComplete="name" required className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-white" />
+              </label>
+              <label className="block text-xs font-semibold text-slate-300">
+                Username
+                <input name="username" autoComplete="username" minLength={3} maxLength={32} pattern="[-a-zA-Z0-9_.]+" required className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-white" />
+              </label>
+              <label className="block text-xs font-semibold text-slate-300">
+                Email address
+                <input name="email" type="email" autoComplete="email" required className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-white" />
+              </label>
+              <label className="block text-xs font-semibold text-slate-300">
+                Department
+                <input name="department" required className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-white" />
+              </label>
+              <label className="block text-xs font-semibold text-slate-300">
+                Phone number
+                <input name="phone" type="tel" autoComplete="tel" pattern="^\+[1-9][0-9]{7,14}$" placeholder="+919876543210" required className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-white" />
+              </label>
+              <label className="block text-xs font-semibold text-slate-300">
+                Temporary password
+                <input name="password" type="password" autoComplete="new-password" minLength={8} required className="mt-1.5 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-white" />
+              </label>
+              <div className="flex justify-end gap-3 border-t border-slate-800 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAdminRegistrationOpen(false)}
+                  className="rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRegisteringAdmin}
+                  className="rounded-xl bg-red-600 px-5 py-2 text-xs font-bold text-white hover:bg-red-500 disabled:opacity-60"
+                >
+                  {isRegisteringAdmin ? 'Registering…' : 'Create Admin Account'}
+                </button>
+              </div>
+            </form>
+            ) : (
+              <div className="space-y-4 p-6 text-sm text-slate-300">
+                <p>
+                  {adminUser.role === 'admin'
+                    ? 'This deployment is not using the Flask admin-registration API, so accounts cannot be created directly here.'
+                    : 'Only an administrator can create another administrator account.'}
+                </p>
+                <div className="rounded-xl border border-slate-700 bg-slate-950 p-4 text-xs leading-relaxed">
+                  <p className="font-semibold text-white">For a Supabase deployment:</p>
+                  <ol className="mt-2 list-inside list-decimal space-y-1">
+                    <li>Sign out and create the new account using Student Login → New student?</li>
+                    <li>Sign back in as an admin and run the following in Supabase SQL Editor:</li>
+                  </ol>
+                  <pre className="mt-3 overflow-x-auto rounded-lg bg-black/40 p-3 text-[11px] text-emerald-200">
+{`update public.profiles as p
+set role = 'admin'
+from auth.users as u
+where p.id = u.id
+  and u.email = 'new-admin@example.com';`}
+                  </pre>
+                </div>
+                <p className="text-xs text-slate-500">
+                  For a local Flask setup, restart the frontend with VITE_API_MODE=flask to enable in-app registration.
+                </p>
+                <div className="flex justify-end border-t border-slate-800 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminRegistrationOpen(false)}
+                    className="rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

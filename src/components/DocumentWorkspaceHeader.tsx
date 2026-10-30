@@ -54,7 +54,7 @@ export function DocumentWorkspaceHeader({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-400" />
           <span className="text-xs sm:text-sm font-semibold tracking-tight text-slate-200">
-            PSIT_BCA_5005_Campus_SOS_AI_Project_Diary.pdf
+            Campus_SOS_AI_Project_Documentation.pdf
           </span>
           <span className="hidden lg:inline text-[11px] text-slate-500 font-mono">
             (A4 210x297mm · 21 Pages)

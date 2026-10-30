@@ -31,9 +31,6 @@ export function TopNav({
           >
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
             <span>Campus SOS AI</span>
-            <span className="text-xs font-normal text-slate-500 font-sans hidden sm:inline">
-              · Minor Project (BCA 5005)
-            </span>
           </a>
         </div>
 
@@ -47,7 +44,7 @@ export function TopNav({
                 : 'hover:text-slate-900'
             }`}
           >
-            Project Diary (21 Pages)
+            Project Documentation
           </button>
 
           <button

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Campus Emergency — Local SQLite Viewer</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, "Segoe UI", sans-serif;
+        color: #172033;
+        background: #f3f6fb;
+      }
+
+      body {
+        margin: 0;
+        padding: 32px;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin-bottom: 4px;
+      }
+
+      .subtitle,
+      .muted {
+        color: #5b667a;
+      }
+
+      .notice,
+      .card {
+        padding: 18px 20px;
+        margin: 18px 0;
+        border: 1px solid #dfe6ef;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 3px 12px #14213d0a;
+      }
+
+      .notice {
+        border-left: 4px solid #1976d2;
+        background: #e8f4ff;
+      }
+
+      .summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 16px;
+        background: #e8f5e9;
+        color: #176b2c;
+        font-weight: 650;
+      }
+
+      .pending {
+        background: #fff5dc;
+        color: #815400;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        background: white;
+      }
+
+      th,
+      td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #e8edf3;
+        white-space: nowrap;
+      }
+
+      th {
+        background: #f7f9fc;
+      }
+
+      #error {
+        color: #a32121;
+      }
+
+      @media (max-width: 600px) {
+        body {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Campus Emergency — Local SQLite Tables</h1>
+      <p class="subtitle">Live, read-only view of the database on this computer</p>
+      <div class="notice">
+        This viewer refreshes every 2 seconds. Passwords are never displayed.
+      </div>
+      <p id="database" class="muted">Connecting to the local Flask backend…</p>
+      <p id="error" role="alert"></p>
+      <div class="summary">
+        <span id="user-count" class="badge">Registered users: —</span>
+        <span id="report-count" class="badge">Emergency reports: —</span>
+      </div>
+      <section class="card">
+        <h2>Registered users</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Username</th><th>Name</th><th>Email</th><th>Role</th></tr>
+            </thead>
+            <tbody id="user-rows"></tbody>
+          </table>
+        </div>
+        <p class="muted">Showing the latest 100 users. Password hashes are intentionally excluded.</p>
+      </section>
+    </main>
+    <script>
+      const byId = (id) => document.getElementById(id);
+
+      function addCell(row, value) {
+        const cell = document.createElement('td');
+        cell.textContent = value == null || value === '' ? '—' : String(value);
+        row.appendChild(cell);
+      }
+
+      function renderRows(target, rows, fields) {
+        target.replaceChildren();
+        if (rows.length === 0) {
+          const row = document.createElement('tr');
+          const cell = document.createElement('td');
+          cell.colSpan = fields.length;
+          cell.textContent = 'No records yet.';
+          row.appendChild(cell);
+          target.appendChild(row);
+          return;
+        }
+
+        for (const item of rows) {
+          const row = document.createElement('tr');
+          for (const field of fields) addCell(row, item[field]);
+          target.appendChild(row);
+        }
+      }
+
+      async function refresh() {
+        try {
+          const response = await fetch('/api/db-summary', { cache: 'no-store' });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+          byId('database').textContent = `Database: ${data.database} · Updated ${new Date().toLocaleTimeString()}`;
+          byId('error').textContent = '';
+          byId('user-count').textContent = `Registered users: ${data.userCount}`;
+          byId('report-count').textContent = `Emergency reports: ${data.reportCount}`;
+          renderRows(byId('user-rows'), data.users, ['id', 'username', 'fullName', 'email', 'role']);
+        } catch (error) {
+          byId('error').textContent = error instanceof Error ? error.message : 'Could not load database status.';
+          byId('database').textContent = 'Local Flask database API unavailable.';
+        }
+      }
+
+      void refresh();
+      window.setInterval(() => { void refresh(); }, 2000);
+    </script>
+  </body>
+</html>

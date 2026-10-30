@@ -11,13 +11,11 @@ export function Footer() {
           <span className="font-bold text-white text-sm">
             Campus Emergency System
           </span>
-          <span className="text-slate-500">·</span>
-          <span>BCA Final Year Project</span>
         </div>
 
         <div className="text-center sm:text-right text-[11px] text-slate-500 space-y-0.5">
-          <p>Department of Computer Applications · PSIT-College of Higher Education</p>
-          <p>React, TypeScript, Supabase Auth &amp; PostgreSQL</p>
+          <p>PSIT College of Higher Education</p>
+          <p>Campus Safety &amp; Incident Response</p>
         </div>
       </div>
     </footer>

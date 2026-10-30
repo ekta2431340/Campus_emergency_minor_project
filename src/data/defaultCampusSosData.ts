@@ -3,10 +3,10 @@ import { ProjectData } from '../types/project';
 export const defaultCampusSosData: ProjectData = {
   projectTitle: "Campus SOS AI",
   projectSubtitle: "Intelligent Multi-Modal Emergency Distress & Rapid Security Incident Response System",
-  subjectCode: "BCA 5005",
+  subjectCode: "",
   session: "2026–2027 (Odd Semester)",
   groupId: "GRP-BCA-2026-09",
-  projectId: "PSIT-BCA-2026-SOS-09",
+  projectId: "PSIT-SOS-2026-09",
   course: "BCA",
   collegeName: "PSIT-College of Higher Education",
   collegeAddress: "Kanpur-Delhi National Highway (NH-19), Bhauti, Kanpur-209305 (U.P.), India",
@@ -225,7 +225,7 @@ The backend infrastructure utilizes real-time bidirectional WebSocket channels p
       weekNo: 9,
       meetingDate: "22/09/2026",
       workDoneCurrent: "Conducted exhaustive stress testing and latency benchmarking across PSIT campus Wi-Fi and mobile networks. Achieved an average alert delivery latency of 1.42 seconds. Simulated 50 concurrent SOS requests without packet drop. Refined false alarm filters.",
-      workDoneNext: "Finalize code refactoring, complete project documentation, format the Progress Diary as per BCA-5005 guidelines, and assemble the presentation deck.",
+      workDoneNext: "Finalize code refactoring, complete project documentation, and assemble the presentation deck.",
       supervisorComments: "System benchmark results exceed project expectations. Complete the final diary documentation and prepare for evaluation defense.",
       supervisorSignatureDate: "22/09/2026"
     },
@@ -233,7 +233,7 @@ The backend infrastructure utilizes real-time bidirectional WebSocket channels p
       weekNo: 10,
       meetingDate: "29/09/2026",
       workDoneCurrent: "Completed comprehensive code documentation, unit testing, and UI polish. Formatted the complete 21-page Minor Project Progress Diary matching PSIT departmental templates. Conducted pre-submission rehearsal for presentation and live software demonstration.",
-      workDoneNext: "Submit the finalized Project Progress Diary, project report, and software artifact for End-Semester BCA Minor Project evaluation.",
+      workDoneNext: "Submit the finalized project documentation, project report, and software for institutional review.",
       supervisorComments: "Outstanding project execution throughout the semester. The software prototype is robust and the documentation is complete. Approved for final evaluation.",
       supervisorSignatureDate: "29/09/2026"
     }

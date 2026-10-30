@@ -3,14 +3,26 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types/database';
 import { User, EmergencyReport, ReportStatus } from './types/emergency';
 import { Navbar } from './components/Navbar';
-import { LoginPage, SignUpDetails } from './components/LoginPage';
+import { LoginPage, SignUpDetails, SignUpResult } from './components/LoginPage';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { VivaCodeViewerModal } from './components/VivaCodeViewerModal';
 import { Footer } from './components/Footer';
 import { supabase } from './lib/supabase';
 import { DEMO_REPORTS, DEMO_USERS } from './data/demoData';
+import {
+  createReport as createFlaskReport,
+  getCurrentUser as getFlaskCurrentUser,
+  getReports as getFlaskReports,
+  registerAdmin as registerFlaskAdmin,
+  registerAdminWithInvite as registerFlaskAdminWithInvite,
+  signIn as signInWithFlask,
+  signOut as signOutFromFlask,
+  signUp as signUpWithFlask,
+  updateReport as updateFlaskReport
+} from './lib/flaskApi';
 
+const useFlaskApi = import.meta.env.VITE_API_MODE === 'flask';
 const STORAGE_KEY_REPORTS = 'campus_emergency_system_reports';
 const STORAGE_KEY_USER = 'campus_emergency_system_active_user';
 const DEMO_STUDENT_PASSWORD = 'bca2026';
@@ -93,17 +105,17 @@ async function loadReports(client: SupabaseClient<Database>): Promise<EmergencyR
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() =>
-    supabase ? null : readDemoStorage<User | null>(STORAGE_KEY_USER, null)
+    supabase || useFlaskApi ? null : readDemoStorage<User | null>(STORAGE_KEY_USER, null)
   );
   const [reports, setReports] = useState<EmergencyReport[]>(() =>
-    supabase ? [] : readDemoStorage(STORAGE_KEY_REPORTS, DEMO_REPORTS)
+    supabase || useFlaskApi ? [] : readDemoStorage(STORAGE_KEY_REPORTS, DEMO_REPORTS)
   );
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isVivaModalOpen, setIsVivaModalOpen] = useState(false);
 
   useEffect(() => {
-    if (supabase) return;
+    if (supabase || useFlaskApi) return;
 
     try {
       localStorage.setItem(STORAGE_KEY_REPORTS, JSON.stringify(reports));
@@ -113,7 +125,7 @@ export default function App() {
   }, [reports]);
 
   useEffect(() => {
-    if (supabase) return;
+    if (supabase || useFlaskApi) return;
 
     try {
       if (currentUser) {
@@ -127,12 +139,43 @@ export default function App() {
   }, [currentUser]);
 
   const refreshReports = useCallback(async () => {
+    if (useFlaskApi) {
+      setReports(await getFlaskReports());
+      return;
+    }
     if (!supabase) return;
     setReports(await loadReports(supabase));
   }, []);
 
   useEffect(() => {
     const client = supabase;
+    if (useFlaskApi) {
+      let isActive = true;
+      const initializeFlaskSession = async () => {
+        const user = await getFlaskCurrentUser();
+        if (!isActive || !user) return;
+        const savedReports = await getFlaskReports();
+        if (isActive) {
+          setCurrentUser(user);
+          setReports(savedReports);
+        }
+      };
+
+      void initializeFlaskSession()
+        .catch((error: unknown) => {
+          if (isActive) {
+            setErrorMessage(error instanceof Error ? error.message : 'Could not connect to the Flask API.');
+          }
+        })
+        .finally(() => {
+          if (isActive) setIsLoading(false);
+        });
+
+      return () => {
+        isActive = false;
+      };
+    }
+
     if (!client) {
       setIsLoading(false);
       return;
@@ -185,7 +228,7 @@ export default function App() {
 
   useEffect(() => {
     const client = supabase;
-    if (!client || !currentUser) return;
+    if (useFlaskApi || !client || !currentUser) return;
 
     const channel = client
       .channel('emergency-reports')
@@ -209,7 +252,16 @@ export default function App() {
     };
   }, [currentUser, refreshReports]);
 
-  const handleLogin = async (email: string, password: string, role: User['role']) => {
+  const handleLogin = async (email: string, password: string, role: User['role']): Promise<void> => {
+    if (useFlaskApi) {
+      const user = await signInWithFlask(email, password, role);
+      const savedReports = await getFlaskReports();
+      setCurrentUser(user);
+      setReports(savedReports);
+      setErrorMessage(null);
+      return;
+    }
+
     if (!supabase) {
       const user = DEMO_USERS.find(
         (candidate) => candidate.role === role && candidate.email?.toLowerCase() === email.toLowerCase()
@@ -259,7 +311,16 @@ export default function App() {
     email: string,
     password: string,
     details: SignUpDetails
-  ): Promise<boolean> => {
+  ): Promise<SignUpResult> => {
+    if (useFlaskApi) {
+      const { user } = await signUpWithFlask(email, password, details);
+      const savedReports = await getFlaskReports();
+      setCurrentUser(user);
+      setReports(savedReports);
+      setErrorMessage(null);
+      return {};
+    }
+
     if (!supabase) {
       throw new Error('Account registration needs a backend. Use one of the demo accounts listed in README.md.');
     }
@@ -272,7 +333,8 @@ export default function App() {
           username: details.username,
           full_name: details.fullName,
           roll_no: details.rollNo,
-          department: details.department
+          department: details.department,
+          phone: details.phone
         }
       }
     });
@@ -295,10 +357,50 @@ export default function App() {
       }
     }
 
-    return !data.session;
+    return { confirmationRequired: !data.session };
+  };
+
+  const handleRegisterAdmin = async (details: {
+    email: string;
+    password: string;
+    username: string;
+    fullName: string;
+    department: string;
+    phone: string;
+  }) => {
+    if (!useFlaskApi) {
+      throw new Error('Admin registration is only available with the Flask API.');
+    }
+    await registerFlaskAdmin(details);
+  };
+
+  const handleAdminSignUp = async (details: {
+    email: string;
+    password: string;
+    username: string;
+    fullName: string;
+    department: string;
+    phone: string;
+    inviteCode: string;
+  }) => {
+    if (!useFlaskApi) {
+      throw new Error('Admin registration requires the configured Flask backend.');
+    }
+    await registerFlaskAdminWithInvite(details);
   };
 
   const handleLogout = async () => {
+    if (useFlaskApi) {
+      try {
+        await signOutFromFlask();
+        setCurrentUser(null);
+        setReports([]);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : 'Could not sign out.');
+      }
+      return;
+    }
+
     if (!supabase) {
       setCurrentUser(null);
       return;
@@ -314,6 +416,12 @@ export default function App() {
 
   const handleAddReport = async (report: EmergencyReport) => {
     if (!currentUser) throw new Error('Your session has expired. Sign in again.');
+    if (useFlaskApi) {
+      const savedReport = await createFlaskReport(report);
+      setReports((previous) => [savedReport, ...previous]);
+      return;
+    }
+
     if (!supabase) {
       setReports((previous) => [report, ...previous]);
       return;
@@ -347,6 +455,12 @@ export default function App() {
     status: ReportStatus,
     adminNotes: string
   ) => {
+    if (useFlaskApi) {
+      const updatedReport = await updateFlaskReport(id, status, adminNotes);
+      setReports((previous) => previous.map((report) => report.id === id ? updatedReport : report));
+      return;
+    }
+
     if (!supabase) {
       setReports((previous) => previous.map((report) => report.id === id
         ? {
@@ -386,7 +500,7 @@ export default function App() {
       />
 
       <main className="flex-1 flex flex-col">
-        {errorMessage && supabase && (
+        {errorMessage && (supabase || useFlaskApi) && (
           <div role="alert" className="max-w-7xl w-full mx-auto mt-4 px-4 sm:px-6 lg:px-8">
             <div className="rounded-xl border border-amber-700 bg-amber-950/50 px-4 py-3 text-sm text-amber-100">
               {errorMessage}
@@ -396,7 +510,11 @@ export default function App() {
         {isLoading ? (
           <div className="flex-1 grid place-items-center text-slate-300">Connecting to Campus Emergency System…</div>
         ) : !currentUser ? (
-          <LoginPage onLogin={handleLogin} onSignUp={handleSignUp} />
+          <LoginPage
+            onLogin={handleLogin}
+            onSignUp={handleSignUp}
+            onAdminSignUp={useFlaskApi ? handleAdminSignUp : undefined}
+          />
         ) : (
           <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
             {currentUser.role === 'student' ? (
@@ -410,6 +528,7 @@ export default function App() {
                 adminUser={currentUser}
                 reports={reports}
                 onUpdateStatus={handleUpdateStatus}
+                onRegisterAdmin={useFlaskApi ? handleRegisterAdmin : undefined}
               />
             )}
           </div>

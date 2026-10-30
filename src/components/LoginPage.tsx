@@ -7,22 +7,39 @@ export interface SignUpDetails {
   fullName: string;
   rollNo: string;
   department: string;
+  phone: string;
+}
+
+export interface SignUpResult {
+  confirmationRequired?: boolean;
 }
 
 interface LoginPageProps {
   onLogin: (email: string, password: string, role: Role) => Promise<void>;
-  onSignUp: (email: string, password: string, details: SignUpDetails) => Promise<boolean>;
+  onSignUp: (email: string, password: string, details: SignUpDetails) => Promise<SignUpResult>;
+  onAdminSignUp?: (details: {
+    email: string;
+    password: string;
+    username: string;
+    fullName: string;
+    department: string;
+    phone: string;
+    inviteCode: string;
+  }) => Promise<void>;
 }
 
-export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
+export function LoginPage({ onLogin, onSignUp, onAdminSignUp }: LoginPageProps) {
   const [role, setRole] = useState<Role>('student');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isAdminRegistering, setIsAdminRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [rollNo, setRollNo] = useState('');
   const [department, setDepartment] = useState('');
+  const [phone, setPhone] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +47,7 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
   const selectRole = (selectedRole: Role) => {
     setRole(selectedRole);
     setIsRegistering(false);
+    setIsAdminRegistering(false);
     setErrorMessage(null);
     setSuccessMessage(null);
   };
@@ -41,15 +59,31 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
     setIsSubmitting(true);
 
     try {
-      if (isRegistering) {
-        const confirmationRequired = await onSignUp(email.trim(), password, {
+      if (isAdminRegistering) {
+        if (!onAdminSignUp) {
+          throw new Error('Admin registration requires the configured Flask backend.');
+        }
+        await onAdminSignUp({
+          email: email.trim(),
+          password,
+          username: username.trim(),
+          fullName: fullName.trim(),
+          department: department.trim(),
+          phone: phone.trim(),
+          inviteCode: inviteCode.trim()
+        });
+        setSuccessMessage('Administrator account created. You can now sign in.');
+        setIsAdminRegistering(false);
+      } else if (isRegistering) {
+        const result = await onSignUp(email.trim(), password, {
           username: username.trim(),
           fullName: fullName.trim(),
           rollNo: rollNo.trim(),
-          department: department.trim()
+          department: department.trim(),
+          phone: phone.trim()
         });
         setSuccessMessage(
-          confirmationRequired
+          result.confirmationRequired
             ? 'Account created. Check your email to confirm your address, then sign in.'
             : 'Account created successfully.'
         );
@@ -114,7 +148,7 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
             </div>
           )}
 
-          {isRegistering && (
+          {(isRegistering || isAdminRegistering) && (
             <>
               <label className="block text-xs font-semibold text-slate-300">
                 Full name
@@ -134,20 +168,22 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
                   autoComplete="username"
                   minLength={3}
                   maxLength={32}
-                  pattern="[a-z0-9_.-]+"
+                  pattern="[-a-z0-9_.]+"
                   required
                   className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white"
                 />
               </label>
-              <label className="block text-xs font-semibold text-slate-300">
-                Roll number
-                <input
-                  value={rollNo}
-                  onChange={(event) => setRollNo(event.target.value)}
-                  required
-                  className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white"
-                />
-              </label>
+              {isRegistering && (
+                <label className="block text-xs font-semibold text-slate-300">
+                  Roll number
+                  <input
+                    value={rollNo}
+                    onChange={(event) => setRollNo(event.target.value)}
+                    required
+                    className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white"
+                  />
+                </label>
+              )}
               <label className="block text-xs font-semibold text-slate-300">
                 Department
                 <input
@@ -157,6 +193,33 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
                   className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white"
                 />
               </label>
+              <label className="block text-xs font-semibold text-slate-300">
+                Phone number
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  autoComplete="tel"
+                  required
+                  pattern="^\+[1-9][0-9]{7,14}$"
+                  placeholder="+919876543210"
+                  className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white"
+                />
+              </label>
+              {isAdminRegistering && (
+                <label className="block text-xs font-semibold text-slate-300">
+                  Admin invite code
+                  <input
+                    type="password"
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    autoComplete="off"
+                    required
+                    className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white"
+                    placeholder="Enter the invite code provided by the system owner"
+                  />
+                </label>
+              )}
             </>
           )}
 
@@ -181,11 +244,11 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                autoComplete={isRegistering ? 'new-password' : 'current-password'}
-                minLength={isRegistering ? 8 : undefined}
+                autoComplete={isRegistering || isAdminRegistering ? 'new-password' : 'current-password'}
+                minLength={isRegistering || isAdminRegistering ? 8 : undefined}
                 required
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
-                placeholder={isRegistering ? 'At least 8 characters' : 'Enter your password'}
+                placeholder={isRegistering || isAdminRegistering ? 'At least 8 characters' : 'Enter your password'}
               />
             </div>
           </label>
@@ -199,7 +262,13 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
           >
             <KeyRound className="w-4 h-4" />
             <span>
-              {isSubmitting ? 'Please wait…' : isRegistering ? 'Create Student Account' : 'Sign In'}
+              {isSubmitting
+                ? 'Please wait…'
+                : isAdminRegistering
+                ? 'Create Admin Account'
+                : isRegistering
+                ? 'Create Student Account'
+                : 'Sign In'}
             </span>
           </button>
 
@@ -208,12 +277,28 @@ export function LoginPage({ onLogin, onSignUp }: LoginPageProps) {
               type="button"
               onClick={() => {
                 setIsRegistering((registering) => !registering);
+                setIsAdminRegistering(false);
                 setErrorMessage(null);
                 setSuccessMessage(null);
               }}
               className="w-full text-xs text-blue-300 hover:text-white"
             >
               {isRegistering ? 'Already registered? Sign in' : 'New student? Create an account'}
+            </button>
+          )}
+          {onAdminSignUp && (
+            <button
+              type="button"
+              onClick={() => {
+                setRole('admin');
+                setIsAdminRegistering((registering) => !registering);
+                setIsRegistering(false);
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              className="w-full text-xs text-red-300 hover:text-white"
+            >
+              {isAdminRegistering ? 'Already registered? Sign in' : 'New administrator? Register with an invite code'}
             </button>
           )}
         </form>

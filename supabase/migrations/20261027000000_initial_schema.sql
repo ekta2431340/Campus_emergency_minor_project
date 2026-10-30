@@ -19,18 +19,23 @@ declare
   user_metadata jsonb := new.raw_user_meta_data;
   generated_username text;
 begin
+  if trim(coalesce(user_metadata ->> 'phone', '')) !~ '^\+[1-9][0-9]{7,14}$' then
+    raise exception 'A phone number in international format is required.';
+  end if;
+
   generated_username := lower(coalesce(
     nullif(user_metadata ->> 'username', ''),
     split_part(new.email, '@', 1)
   ));
 
-  insert into public.profiles (id, username, full_name, roll_no, department, email)
+  insert into public.profiles (id, username, full_name, roll_no, department, phone, email)
   values (
     new.id,
     generated_username,
     coalesce(nullif(trim(user_metadata ->> 'full_name'), ''), generated_username),
     nullif(trim(user_metadata ->> 'roll_no'), ''),
     nullif(trim(user_metadata ->> 'department'), ''),
+    trim(user_metadata ->> 'phone'),
     new.email
   );
 

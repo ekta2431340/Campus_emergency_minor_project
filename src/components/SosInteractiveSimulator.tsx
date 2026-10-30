@@ -86,7 +86,7 @@ export function SosInteractiveSimulator({
               </span>
             </h2>
             <p className="text-xs text-slate-400">
-              Interactive test harness for BCA Minor Project evaluation & faculty demo
+              Interactive environment for testing emergency response workflows
             </p>
           </div>
         </div>

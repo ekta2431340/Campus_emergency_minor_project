@@ -1,6 +1,6 @@
 import { EmergencyCategory, ClassificationResult, ReportPriority } from '../types/emergency';
 
-// Same keyword dictionaries as classify_emergency.py for BCA project viva
+// Keep keyword dictionaries aligned with the Python emergency classifier.
 export const HIGH_PRIORITY_KEYWORDS = [
   'fire', 'smoke', 'burning', 'blast', 'explosion',
   'unconscious', 'fainted', 'not breathing', 'heart attack', 'chest pain',
